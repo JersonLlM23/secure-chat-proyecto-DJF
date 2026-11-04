@@ -43,6 +43,7 @@ describe('StegoAnalysisService (persistencia)', () => {
     });
 
     expect(create).toHaveBeenCalledOnce();
+    expect(create.mock.calls[0][0]).not.toHaveProperty('id');
     expect(save).toHaveBeenCalledOnce();
     expect(result.status).toBe(StegoStatus.SIN_INDICIOS);
   });

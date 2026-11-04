@@ -38,6 +38,13 @@ export default new DataSource({
 
   entities: [StegoAnalysis],
 
+  /*
+   * La migracion correctiva usa gen_random_uuid(). Esta opcion alinea la
+   * expectativa de TypeORM para @PrimaryGeneratedColumn('uuid') sin
+   * depender de la extension uuid-ossp.
+   */
+  uuidExtension: 'pgcrypto',
+
   migrations: [join(currentDirectory, 'migrations', '*.js')],
 
   synchronize: false,

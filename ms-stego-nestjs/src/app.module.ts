@@ -27,6 +27,12 @@ import { StegoModule } from './stego/stego.module.js';
         autoLoadEntities: true,
 
         /*
+         * Coherente con la migracion correctiva: el UUID de
+         * stego_analysis.id lo genera PostgreSQL con gen_random_uuid().
+         */
+        uuidExtension: 'pgcrypto',
+
+        /*
          * Secure by Design:
          * nunca modificar automáticamente
          * el esquema. Los cambios se aplican

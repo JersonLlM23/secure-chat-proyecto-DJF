@@ -4,7 +4,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import { AUTH_ACTIONS } from '../auth/auth-actions.js';
 import { AuthClientService } from '../auth/auth-client.service.js';
@@ -66,6 +66,7 @@ export class StegoService {
          * sin presentarlo como análisis exitoso.
          */
         const record = await this.analyses.create({
+          id: randomUUID(),
           userId: user.userId,
           filename: validated.filename,
           sha256,
@@ -91,6 +92,7 @@ export class StegoService {
     const status = this.classify(metrics.anomalyScore);
 
     const record = await this.analyses.create({
+      id: randomUUID(),
       userId: user.userId,
       filename: validated.filename,
       sha256,
