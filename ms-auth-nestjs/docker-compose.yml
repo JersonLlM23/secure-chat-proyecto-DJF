@@ -1,0 +1,109 @@
+services:
+
+  postgres:
+    image: postgres:18-alpine
+    container_name: users-postgres
+
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: "${DB_DATABASE:?DB_DATABASE no definido}"
+      POSTGRES_USER: "${DB_USERNAME:?DB_USERNAME no definido}"
+      POSTGRES_PASSWORD: "${DB_PASSWORD:?DB_PASSWORD no definido}"
+
+    ports:
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+
+    volumes:
+      - users_postgres_data:/var/lib/postgresql
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    security_opt:
+      - no-new-privileges:true
+
+    networks:
+      - users-network
+
+
+  auth:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: ms-auth-nestjs
+
+    restart: unless-stopped
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    environment:
+      NODE_ENV: "${NODE_ENV:-development}"
+      PORT: "3001"
+
+      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:3000}"
+      TRUST_PROXY: "${TRUST_PROXY:-}"
+
+      DB_HOST: "postgres"
+      DB_PORT: "5432"
+      DB_USERNAME: "${DB_USERNAME:?DB_USERNAME no definido}"
+      DB_PASSWORD: "${DB_PASSWORD:?DB_PASSWORD no definido}"
+      DB_DATABASE: "${DB_DATABASE:?DB_DATABASE no definido}"
+      DB_SSL: "${DB_SSL:-false}"
+
+      RATE_LIMIT_TTL_MS: "${RATE_LIMIT_TTL_MS:-60000}"
+      RATE_LIMIT_MAX: "${RATE_LIMIT_MAX:-100}"
+      RATE_LIMIT_BLOCK_MS: "${RATE_LIMIT_BLOCK_MS:-60000}"
+
+      # Las claves se montan de solo lectura; la privada nunca entra
+      # en la imagen.
+      JWT_PRIVATE_KEY_PATH: "/app/keys/private.pem"
+      JWT_PUBLIC_KEY_PATH: "/app/keys/public.pem"
+      JWT_EXPIRES_IN_SECONDS: "${JWT_EXPIRES_IN_SECONDS:-900}"
+      JWT_ISSUER: "${JWT_ISSUER:-ms-auth}"
+      JWT_AUDIENCE: "${JWT_AUDIENCE:-secure-chat-api}"
+
+      INTERNAL_API_KEY: "${INTERNAL_API_KEY:?INTERNAL_API_KEY no definido}"
+
+    volumes:
+      - ./keys:/app/keys:ro
+
+    ports:
+      - "127.0.0.1:${PORT:-3001}:3001"
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+
+    security_opt:
+      - no-new-privileges:true
+
+    networks:
+      - users-network
+
+
+volumes:
+  users_postgres_data:
+
+
+networks:
+  users-network:
+    driver: bridge

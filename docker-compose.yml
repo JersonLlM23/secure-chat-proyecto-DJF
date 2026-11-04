@@ -1,0 +1,218 @@
+name: secure-chat
+
+x-auth-db-env: &auth-db-env
+  DB_HOST: auth-db
+  DB_PORT: "5432"
+  DB_USERNAME: ${AUTH_DB_USERNAME:?AUTH_DB_USERNAME es obligatorio}
+  DB_PASSWORD: ${AUTH_DB_PASSWORD:?AUTH_DB_PASSWORD es obligatorio}
+  DB_DATABASE: ${AUTH_DB_DATABASE:?AUTH_DB_DATABASE es obligatorio}
+  DB_SSL: "false"
+
+x-stego-db-env: &stego-db-env
+  DB_HOST: stego-db
+  DB_PORT: "5432"
+  DB_USERNAME: ${STEGO_DB_USERNAME:?STEGO_DB_USERNAME es obligatorio}
+  DB_PASSWORD: ${STEGO_DB_PASSWORD:?STEGO_DB_PASSWORD es obligatorio}
+  DB_DATABASE: ${STEGO_DB_DATABASE:?STEGO_DB_DATABASE es obligatorio}
+  DB_SSL: "false"
+
+services:
+  auth-db:
+    image: postgres:18-alpine
+    container_name: secure-chat-auth-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${AUTH_DB_DATABASE:?AUTH_DB_DATABASE es obligatorio}
+      POSTGRES_USER: ${AUTH_DB_USERNAME:?AUTH_DB_USERNAME es obligatorio}
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:?AUTH_DB_PASSWORD es obligatorio}
+    volumes:
+      - auth_postgres_data:/var/lib/postgresql
+    networks:
+      - backend
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+
+  auth-migrate:
+    build:
+      context: ./ms-auth-nestjs
+      dockerfile: Dockerfile
+    image: secure-chat-auth:local
+    container_name: secure-chat-auth-migrate
+    command: ["node", "dist/database/migrate.js"]
+    restart: "no"
+    environment:
+      <<: *auth-db-env
+      NODE_ENV: production
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    networks:
+      - backend
+    security_opt:
+      - no-new-privileges:true
+
+  auth:
+    build:
+      context: ./ms-auth-nestjs
+      dockerfile: Dockerfile
+    image: secure-chat-auth:local
+    container_name: secure-chat-auth
+    restart: unless-stopped
+    environment:
+      <<: *auth-db-env
+      NODE_ENV: ${NODE_ENV:-production}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
+      PORT: "3001"
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      TRUST_PROXY: ${TRUST_PROXY:-}
+      RATE_LIMIT_TTL_MS: ${RATE_LIMIT_TTL_MS:-60000}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+      RATE_LIMIT_BLOCK_MS: ${RATE_LIMIT_BLOCK_MS:-60000}
+      JWT_PRIVATE_KEY_PATH: /app/keys/private.pem
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+      JWT_EXPIRES_IN_SECONDS: ${JWT_EXPIRES_IN_SECONDS:-900}
+      JWT_ISSUER: ${JWT_ISSUER:-ms-auth}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-secure-chat-api}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?INTERNAL_API_KEY es obligatorio}
+    volumes:
+      - ./ms-auth-nestjs/keys:/app/keys:ro
+    ports:
+      - "127.0.0.1:${AUTH_PORT:-3001}:3001"
+    depends_on:
+      auth-db:
+        condition: service_healthy
+      auth-migrate:
+        condition: service_completed_successfully
+    networks:
+      - backend
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+    security_opt:
+      - no-new-privileges:true
+
+  stego-db:
+    image: postgres:18-alpine
+    container_name: secure-chat-stego-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${STEGO_DB_DATABASE:?STEGO_DB_DATABASE es obligatorio}
+      POSTGRES_USER: ${STEGO_DB_USERNAME:?STEGO_DB_USERNAME es obligatorio}
+      POSTGRES_PASSWORD: ${STEGO_DB_PASSWORD:?STEGO_DB_PASSWORD es obligatorio}
+    volumes:
+      - stego_postgres_data:/var/lib/postgresql
+    networks:
+      - backend
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+
+  stego-migrate:
+    build:
+      context: ./ms-stego-nestjs
+      dockerfile: Dockerfile
+    image: secure-chat-stego:local
+    container_name: secure-chat-stego-migrate
+    command: ["node", "dist/database/migrate.js"]
+    restart: "no"
+    environment:
+      <<: *stego-db-env
+      NODE_ENV: production
+    depends_on:
+      stego-db:
+        condition: service_healthy
+    networks:
+      - backend
+    security_opt:
+      - no-new-privileges:true
+
+  stego:
+    build:
+      context: ./ms-stego-nestjs
+      dockerfile: Dockerfile
+    image: secure-chat-stego:local
+    container_name: secure-chat-stego
+    restart: unless-stopped
+    environment:
+      <<: *stego-db-env
+      NODE_ENV: ${NODE_ENV:-production}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
+      PORT: "3002"
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      TRUST_PROXY: ${TRUST_PROXY:-}
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+      JWT_ISSUER: ${JWT_ISSUER:-ms-auth}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-secure-chat-api}
+      AUTH_INTERNAL_URL: http://auth:3001
+      AUTH_TIMEOUT_MS: ${AUTH_TIMEOUT_MS:-3000}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?INTERNAL_API_KEY es obligatorio}
+      MAX_FILE_SIZE_BYTES: ${MAX_FILE_SIZE_BYTES:-10485760}
+      MAX_IMAGE_WIDTH: ${MAX_IMAGE_WIDTH:-10000}
+      MAX_IMAGE_HEIGHT: ${MAX_IMAGE_HEIGHT:-10000}
+      MAX_IMAGE_PIXELS: ${MAX_IMAGE_PIXELS:-40000000}
+      STEGO_SUSPICIOUS_THRESHOLD: ${STEGO_SUSPICIOUS_THRESHOLD:-0.75}
+      STEGO_CLEAR_THRESHOLD: ${STEGO_CLEAR_THRESHOLD:-0.55}
+    volumes:
+      - ./ms-auth-nestjs/keys/public.pem:/app/keys/public.pem:ro
+    ports:
+      - "127.0.0.1:${STEGO_PORT:-3002}:3002"
+    depends_on:
+      stego-db:
+        condition: service_healthy
+      stego-migrate:
+        condition: service_completed_successfully
+      auth:
+        condition: service_healthy
+    networks:
+      - backend
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3002/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  auth_postgres_data:
+    external: true
+    name: ms-auth-nestjs_users_postgres_data
+
+  stego_postgres_data:
+    external: true
+    name: ms-stego-nestjs_stego_postgres_data

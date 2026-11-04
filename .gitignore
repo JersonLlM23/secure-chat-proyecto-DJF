@@ -1,0 +1,26 @@
+# Entorno y secretos
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.pem
+*.key
+keys/
+
+# Dependencias y builds
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Logs y temporales
+logs/
+*.log
+.temp/
+.tmp/
+
+# Herramientas
+.vscode/
+.idea/
+.DS_Store

@@ -1,0 +1,30 @@
+Implementa la habilitación configurable de Swagger/OpenAPI en `ms-auth-nestjs` y `ms-stego-nestjs`.
+
+**Objetivo:**
+Permitir habilitar Swagger mediante la variable de entorno `SWAGGER_ENABLED`, sin cambiar `NODE_ENV=production`.
+
+**Requisitos:**
+
+1. En ambos `main.ts`, reemplaza la condición actual de Swagger:
+   `if (nodeEnv !== 'production')`
+
+   por una condición que habilite Swagger únicamente cuando `SWAGGER_ENABLED=true`.
+
+2. Mantén la ruta de documentación `/docs` en ambos servicios:
+   - AUTH: `/docs`
+   - STEGO: `/docs`
+
+3. Actualiza los archivos `.env.example` de ambos microservicios para documentar `SWAGGER_ENABLED=false` como valor predeterminado.
+
+4. Actualiza el `docker-compose.yml` raíz para pasar `SWAGGER_ENABLED=true` a ambos contenedores AUTH y STEGO.
+
+5. No cambies `NODE_ENV=production`.
+
+6. No modifiques autenticación, JWT, RBAC, endpoints, bases de datos ni migraciones.
+
+7. No publiques Swagger en una interfaz de red externa. Los servicios deben seguir escuchando únicamente en `127.0.0.1` desde el host, como actualmente.
+
+8. Comprueba que ambos proyectos compilen y que las pruebas existentes sigan pasando.
+
+9. No reconstruyas ni reinicies contenedores todavía. Primero quiero revisar los cambios.
+
