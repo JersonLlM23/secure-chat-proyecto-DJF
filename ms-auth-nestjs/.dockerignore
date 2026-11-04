@@ -1,0 +1,16 @@
+node_modules
+dist
+coverage
+.git
+.gitignore
+.env
+.env.*
+keys
+*.pem
+*.key
+*.tsbuildinfo
+logs
+*.log
+test
+postman
+README.md

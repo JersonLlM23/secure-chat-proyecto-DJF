@@ -1,0 +1,52 @@
+Implementa el ajuste de rutas del microservicio AUTH identificado en la revisión anterior.
+
+**Objetivo:** cumplir exactamente las rutas del PDF, eliminando `/v1` y excluyendo el endpoint interno del prefijo `/api`.
+
+### Cambios requeridos
+
+1. En `src/configure-app.ts`:
+   - Elimina el versionado URI (`enableVersioning`).
+   - Conserva el prefijo global `api`.
+   - Excluye el endpoint interno `POST /internal/authorization/check` del prefijo global.
+   - Utiliza una configuración compatible con la versión instalada de NestJS.
+
+2. En `src/main.ts`:
+   - Actualiza los mensajes de consola para reflejar las rutas nuevas.
+   - No anuncies rutas antiguas `/api/v1`.
+
+3. Actualiza las pruebas e2e:
+   - Las rutas de negocio deben utilizar `/api/...`.
+   - La autorización interna debe utilizar `/internal/authorization/check`.
+   - Mantén las pruebas de seguridad existentes.
+
+4. Actualiza Postman:
+   - Ajusta las URLs de la colección y del entorno.
+   - Usa la ruta interna sin prefijo `/api`.
+
+5. Actualiza README:
+   - Corrige ejemplos HTTP y documentación de rutas.
+
+6. Revisa Dockerfile y docker-compose:
+   - Actualiza únicamente los healthchecks si dependen de las rutas anteriores.
+   - No agregues endpoints nuevos.
+
+### Restricciones
+
+- No modifiques controladores ni servicios si no es estrictamente necesario.
+- No cambies JWT, RS256, RBAC, Argon2id, entidades, migraciones ni configuración de base de datos.
+- No agregues, elimines ni renombres endpoints funcionales.
+- No agregues `/health` si no existe actualmente.
+- No cambies la lógica de autorización interna.
+- No introduzcas rutas `/api/v1` alternativas.
+
+### Verificación obligatoria
+
+Después de implementar:
+
+- Ejecuta build, lint, pruebas unitarias y e2e.
+- Comprueba que `POST /api/auth/login` responde correctamente.
+- Comprueba que `POST /internal/authorization/check` responde correctamente con la autenticación de servicio.
+- Comprueba que las antiguas rutas `/api/v1/...` ya no funcionan.
+- Comprueba que el healthcheck de Docker sigue funcionando, si existe.
+
+Devuélveme un resumen breve con los archivos modificados, resultados de las pruebas y las rutas finales verificadas. No generes un informe extenso.
