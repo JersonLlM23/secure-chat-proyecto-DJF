@@ -10,8 +10,9 @@
 
 Manual de Usuario / Guia de Ejecucion y Pruebas del Backend.
 
-**Ultima actualizacion:** 2026-11-05
+**Credenciales:** Se encuentran en la carpeta /Informe.  
 
+**Ultima actualizacion:** 2026-11-05
 ---
 
 ## 1. Introduccion
