@@ -10,6 +10,8 @@
 | `lcastro`  | Luis Alberto Castro Molina | `USER`            | Activo |
 | `mgomez`   | María Fernanda Gómez Ruiz  | `USER`            | Activo |
 
+(la contraseña de todos es ClaveSegura2026!)
+
 ---
 
 ## Tabla `user_roles`
