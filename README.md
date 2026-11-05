@@ -1,18 +1,23 @@
-# Secure Chat - Backend V1
+# Secure Chat - Backend V1  
 
-**Materia:** Desarrollo Software Seguro
+**Materia:** Desarrollo Software Seguro  
 
-**Proyecto:** Secure Chat - Backend V1
+**Proyecto:** Secure Chat - Backend V1  
 
-**Arquitectura:** Microservicios AUTH + STEGO orquestados con Docker Compose
+**Arquitectura:** Microservicios AUTH + STEGO orquestados con Docker Compose  
 
-**Integrantes:** Chalacan Dennison, Llumiquinga M. Jerson, Sandoval Fernando
+**Integrantes:** Chalacan Dennison, Llumiquinga M. Jerson, Sandoval Fernando  
 
-Manual de Usuario / Guia de Ejecucion y Pruebas del Backend.
+**Repositorios del proyecto:**
+- **Repositorio principal:** [secure-chat-proyecto-DJF](https://github.com/JersonLlM23/secure-chat-proyecto-DJF)  
+- **Repositorio aparte donde se evaluaron pruebas:** [proyecto-integrador](https://github.com/DennisonCc/proyecto-integrador)  
 
-**Credenciales:** Se encuentran en la carpeta /Informe.  
+**Manual de Usuario / Guia de Ejecucion y Pruebas del Backend.**  
+
+**Credenciales:** Se encuentran en la carpeta /Informe.
 
 **Ultima actualizacion:** 2026-11-05
+
 ---
 
 ## 1. Introduccion
