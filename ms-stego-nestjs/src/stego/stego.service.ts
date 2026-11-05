@@ -65,6 +65,15 @@ export class StegoService {
          * iniciado. Se conserva evidencia mínima como estado `error`,
          * sin presentarlo como análisis exitoso.
          */
+        const indicators: Record<string, unknown> = {
+          stage: 'decoding',
+          reason: error.reason,
+        };
+
+        if (error.format) {
+          indicators.format = error.format;
+        }
+
         const record = await this.analyses.create({
           id: randomUUID(),
           userId: user.userId,
@@ -73,15 +82,12 @@ export class StegoService {
           technique: ANALYSIS_METHOD,
           status: StegoStatus.ERROR,
           action: StegoAction.RECHAZO,
-          indicators: {
-            stage: 'decoding',
-            reason: 'image_decoding_error',
-          },
+          indicators,
           limitations: ANALYSIS_LIMITATIONS,
         });
 
         throw new UnprocessableEntityException({
-          message: 'No se pudo decodificar la imagen',
+          message: error.message,
           analysisId: record.id,
         });
       }

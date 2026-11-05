@@ -1,0 +1,6 @@
+$kind: http-request
+url: "{{baseUrl}}/user-roles/{{userId}}/{{roleId}}"
+method: DELETE
+headers:
+  Authorization: Bearer {{accessToken}}
+order: 6000

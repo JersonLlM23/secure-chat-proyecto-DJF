@@ -58,7 +58,10 @@ export class StegoController {
   @ApiResponse({ status: 403, description: 'Denegado por AUTH' })
   @ApiResponse({ status: 413, description: 'Archivo o imagen demasiado grande' })
   @ApiResponse({ status: 415, description: 'Formato de archivo no soportado' })
-  @ApiResponse({ status: 422, description: 'Imagen no decodificable' })
+  @ApiResponse({
+    status: 422,
+    description: 'Imagen no decodificable o variante BMP no soportada',
+  })
   @ApiResponse({ status: 503, description: 'AUTH no disponible (Fail-Closed)' })
   async analyze(
     @CurrentUser() user: AuthenticatedUser,

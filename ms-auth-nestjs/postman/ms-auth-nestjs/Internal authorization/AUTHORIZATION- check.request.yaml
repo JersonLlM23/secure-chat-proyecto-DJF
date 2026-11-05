@@ -1,0 +1,26 @@
+$kind: http-request
+name: "AUTHORIZATION: check"
+url: "{{internalBaseUrl}}/internal/authorization/check"
+method: POST
+headers:
+  Content-Type: application/json
+  X-Service-Key: "{{internalApiKey}}"
+body:
+  type: text
+  content: |-
+    {
+      "subject_token": "{{accessToken}}",
+      "action": "steganography.analyze",
+      "resource_id": null
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('decision explicita', () => {
+        const body = pm.response.json();
+        pm.expect(body).to.have.property('subject_id');
+        pm.expect(body).to.have.property('allowed');
+        pm.expect(body).to.have.property('reason');
+      });
+    language: text/javascript
+order: 1000

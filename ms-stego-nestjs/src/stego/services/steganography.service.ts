@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   PayloadTooLargeException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -9,6 +10,12 @@ import type {
   ChannelMetrics,
   SteganographyMetrics,
 } from '../interfaces/steganography-metrics.interface.js';
+import {
+  BmpDecodeError,
+  decodeBmp,
+  isBmp,
+  readBmpHeader,
+} from './bmp-decoder.js';
 
 interface RawImageInfo {
   width: number;
@@ -16,17 +23,40 @@ interface RawImageInfo {
   channels: number;
 }
 
+interface DecodedImage {
+  data: Buffer;
+  info: RawImageInfo;
+}
+
+export type ImageDecodingReason =
+  | 'image_decoding_error'
+  | 'unsupported_image_variant';
+
 export class ImageDecodingError extends Error {
-  constructor() {
-    super('No se pudo decodificar la imagen');
+  readonly reason: ImageDecodingReason;
+  readonly format?: string;
+  readonly detail?: string;
+
+  constructor(
+    reason: ImageDecodingReason = 'image_decoding_error',
+    options: { format?: string; detail?: string } = {},
+  ) {
+    super(
+      reason === 'unsupported_image_variant'
+        ? 'Variante de imagen no soportada'
+        : 'No se pudo decodificar la imagen',
+    );
     this.name = 'ImageDecodingError';
+    this.reason = reason;
+    this.format = options.format;
+    this.detail = options.detail;
   }
 }
 
 export const ANALYSIS_METHOD = 'lsb_statistical_analysis';
 
 export const ANALYSIS_LIMITATIONS =
-  'Resultado indicativo mediante análisis estadístico de los bits menos significativos (PoV, chi-cuadrado y entropía). No es prueba definitiva de esteganografía ni identifica el payload. Los umbrales son criterios experimentales que requieren calibración con un corpus representativo.';
+  'Resultado indicativo mediante análisis estadístico de los bits menos significativos (PoV, chi-cuadrado y entropía) .';
 
 /*
  * Métricas agregadas sobre los bytes RGB (canal alfa excluido).
@@ -184,6 +214,7 @@ export class SteganographyService {
   private readonly maxPixels: number;
   private readonly suspiciousThreshold: number;
   private readonly clearThreshold: number;
+  private readonly logger = new Logger(SteganographyService.name);
 
   constructor(config: ConfigService) {
     this.maxWidth = config.getOrThrow<number>('MAX_IMAGE_WIDTH');
@@ -196,6 +227,20 @@ export class SteganographyService {
   }
 
   async analyze(buffer: Buffer): Promise<SteganographyMetrics> {
+    const decoded = await this.decodeToRgb(buffer);
+
+    return this.computeMetrics(decoded.data, decoded.info);
+  }
+
+  private async decodeToRgb(buffer: Buffer): Promise<DecodedImage> {
+    if (isBmp(buffer)) {
+      return this.decodeBmpToRgb(buffer);
+    }
+
+    return this.decodeWithSharp(buffer);
+  }
+
+  private async decodeWithSharp(buffer: Buffer): Promise<DecodedImage> {
     let metadata: { width?: number; height?: number };
 
     try {
@@ -206,8 +251,8 @@ export class SteganographyService {
       metadata = await sharp(buffer, {
         limitInputPixels: false,
       }).metadata();
-    } catch {
-      throw new ImageDecodingError();
+    } catch (error) {
+      throw this.decodingError('sharp_metadata', error);
     }
 
     const width = metadata.width;
@@ -217,15 +262,7 @@ export class SteganographyService {
       throw new ImageDecodingError();
     }
 
-    if (
-      width > this.maxWidth ||
-      height > this.maxHeight ||
-      width * height > this.maxPixels
-    ) {
-      throw new PayloadTooLargeException(
-        'La imagen excede las dimensiones o el total de píxeles permitidos',
-      );
-    }
+    this.assertDimensions(width, height);
 
     let data: Buffer;
     let info: RawImageInfo;
@@ -246,12 +283,83 @@ export class SteganographyService {
         height: decoded.info.height,
         channels: decoded.info.channels,
       };
-    } catch {
-      throw new ImageDecodingError();
+    } catch (error) {
+      throw this.decodingError('sharp_decode', error);
     }
 
+    return this.normalizeDecoded(data, info);
+  }
+
+  private async decodeBmpToRgb(buffer: Buffer): Promise<DecodedImage> {
+    let header;
+
+    try {
+      header = readBmpHeader(buffer);
+    } catch (error) {
+      throw this.bmpError(error);
+    }
+
+    /*
+     * Se valida con la cabecera antes de decodificar para evitar
+     * reservar width * height * 4 bytes a partir de datos no confiables.
+     */
+    this.assertDimensions(header.width, header.height);
+
+    let decoded: ReturnType<typeof decodeBmp>;
+
+    try {
+      decoded = decodeBmp(buffer);
+    } catch (error) {
+      throw this.bmpError(error);
+    }
+
+    this.assertDimensions(decoded.width, decoded.height);
+
+    let data: Buffer;
+    let info: RawImageInfo;
+
+    try {
+      /*
+       * Sharp no puede leer BMP en esta compilación (sin ImageMagick),
+       * por eso el BMP se decodifica a RGBA y se normaliza aquí a sRGB
+       * con tres canales, igual que el resto de formatos.
+       */
+      const normalized = await sharp(decoded.data, {
+        raw: {
+          width: decoded.width,
+          height: decoded.height,
+          channels: 4,
+        },
+        limitInputPixels: this.maxPixels,
+      })
+        .toColourspace('srgb')
+        .removeAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+
+      data = normalized.data;
+      info = {
+        width: normalized.info.width,
+        height: normalized.info.height,
+        channels: normalized.info.channels,
+      };
+    } catch (error) {
+      throw this.decodingError('sharp_bmp_normalize', error, 'bmp');
+    }
+
+    return this.normalizeDecoded(data, info, 'bmp');
+  }
+
+  private normalizeDecoded(
+    data: Buffer,
+    info: RawImageInfo,
+    format?: string,
+  ): DecodedImage {
     if (info.channels !== 3) {
-      throw new ImageDecodingError();
+      throw new ImageDecodingError('image_decoding_error', {
+        format,
+        detail: `canales inesperados: ${info.channels}`,
+      });
     }
 
     if (info.width * info.height > this.maxPixels) {
@@ -263,9 +371,73 @@ export class SteganographyService {
     const expectedLength = info.width * info.height * 3;
 
     if (data.length !== expectedLength) {
-      throw new ImageDecodingError();
+      throw new ImageDecodingError('image_decoding_error', {
+        format,
+        detail: `búfer de ${data.length} bytes, se esperaban ${expectedLength}`,
+      });
     }
 
+    return { data, info };
+  }
+
+  private assertDimensions(width: number, height: number): void {
+    if (
+      width > this.maxWidth ||
+      height > this.maxHeight ||
+      width * height > this.maxPixels
+    ) {
+      throw new PayloadTooLargeException(
+        'La imagen excede las dimensiones o el total de píxeles permitidos',
+      );
+    }
+  }
+
+  private bmpError(error: unknown): ImageDecodingError {
+    if (error instanceof BmpDecodeError) {
+      const reason: ImageDecodingReason =
+        error.failure.kind === 'unsupported'
+          ? 'unsupported_image_variant'
+          : 'image_decoding_error';
+
+      this.logger.warn(
+        `Fallo al decodificar BMP (${error.failure.kind}): ${error.failure.detail}`,
+      );
+
+      return new ImageDecodingError(reason, {
+        format: 'bmp',
+        detail: error.failure.detail,
+      });
+    }
+
+    return this.decodingError('bmp', error, 'bmp');
+  }
+
+  private decodingError(
+    stage: string,
+    error: unknown,
+    format?: string,
+  ): ImageDecodingError {
+    const detail =
+      error instanceof Error ? error.message : 'error desconocido';
+
+    /*
+     * Solo se registra información del formato y del error técnico;
+     * nunca el búfer de la imagen.
+     */
+    this.logger.warn(
+      `Fallo de decodificación (${stage})${format ? ` formato=${format}` : ''}: ${detail}`,
+    );
+
+    return new ImageDecodingError('image_decoding_error', {
+      format,
+      detail,
+    });
+  }
+
+  private computeMetrics(
+    data: Buffer,
+    info: RawImageInfo,
+  ): SteganographyMetrics {
     /*
      * Se analizan los canales RGB de forma agregada y también por canal
      * individual, de manera reproducible y excluyendo alfa.
@@ -295,8 +467,8 @@ export class SteganographyService {
     const anomalyScore = Math.min(
       Math.max(
         0.45 * aggregate.lsbEntropy +
-          0.45 * aggregate.poVScore +
-          0.1 * aggregate.chiSquarePValue,
+        0.45 * aggregate.poVScore +
+        0.1 * aggregate.chiSquarePValue,
         0,
       ),
       1,

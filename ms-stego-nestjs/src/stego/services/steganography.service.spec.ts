@@ -3,8 +3,17 @@ import { ConfigService } from '@nestjs/config';
 import { describe, expect, it } from 'vitest';
 
 import {
+  create16BitBmp,
+  createBmpFromRgb,
+  createDeterministicPayload,
+  createHostBmp,
   createHostPng,
+  createHostRaw,
+  createIndexedBmp,
   createLsbEmbeddedPng,
+  createOs2CoreBmp,
+  createRle8Bmp,
+  embedLsbPayload,
 } from '../../../test/fixtures/synthetic-images.js';
 import {
   ImageDecodingError,
@@ -87,6 +96,89 @@ describe('SteganographyService (métricas LSB reales)', () => {
       PayloadTooLargeException,
     );
   });
+
+  it('procesa un BMP 24 bits con las mismas métricas que su PNG equivalente', async () => {
+    const service = createService();
+    const raw = createHostRaw(32, 32);
+
+    const pngMetrics = await service.analyze(await createHostPng(32, 32));
+    const bmpMetrics = await service.analyze(
+      createBmpFromRgb(raw, 32, 32),
+    );
+
+    expect(bmpMetrics.width).toBe(32);
+    expect(bmpMetrics.height).toBe(32);
+    expect(bmpMetrics.analyzedBytes).toBe(32 * 32 * 3);
+    expect(bmpMetrics.lsbEntropy).toBeCloseTo(pngMetrics.lsbEntropy, 10);
+    expect(bmpMetrics.poVScore).toBeCloseTo(pngMetrics.poVScore, 10);
+    expect(bmpMetrics.anomalyScore).toBeCloseTo(
+      pngMetrics.anomalyScore,
+      10,
+    );
+  });
+
+  it('detecta LSB inyectados en un BMP igual que en el PNG equivalente', async () => {
+    const service = createService();
+    const raw = createHostRaw(48, 48);
+    const payload = createDeterministicPayload(Math.ceil(raw.length / 8));
+    const embeddedRaw = embedLsbPayload(raw, payload);
+
+    const host = await service.analyze(await createHostBmp(48, 48));
+    const embedded = await service.analyze(
+      createBmpFromRgb(embeddedRaw, 48, 48),
+    );
+
+    expect(embedded.lsbEntropy).toBeGreaterThan(host.lsbEntropy);
+    expect(embedded.anomalyScore).toBeGreaterThan(host.anomalyScore);
+  });
+
+  it.each([
+    [
+      '24 bits top-down',
+      () => createBmpFromRgb(createHostRaw(16, 16), 16, 16, { topDown: true }),
+    ],
+    [
+      '32 bits',
+      () => createBmpFromRgb(createHostRaw(16, 16), 16, 16, { bitPP: 32 }),
+    ],
+    ['8 bits con paleta', () => createIndexedBmp(16, 16)],
+    ['16 bits', () => create16BitBmp(16, 16)],
+  ])('decodifica BMP %s', async (_name, build) => {
+    const metrics = await createService().analyze(build());
+
+    expect(metrics.width).toBe(16);
+    expect(metrics.height).toBe(16);
+    expect(metrics.analyzedBytes).toBe(16 * 16 * 3);
+  });
+
+  it('rechaza BMP que exceden el total de píxeles desde la cabecera', async () => {
+    const service = createService({ MAX_IMAGE_PIXELS: 100 });
+
+    await expect(
+      service.analyze(await createHostBmp(32, 32)),
+    ).rejects.toThrow(PayloadTooLargeException);
+  });
+
+  it.each([
+    ['OS/2 BITMAPCOREHEADER', createOs2CoreBmp],
+    ['RLE8', createRle8Bmp],
+  ])(
+    'clasifica la variante BMP %s como no soportada',
+    async (_name, build) => {
+      const error = await createService()
+        .analyze(build())
+        .then(
+          () => null,
+          (reason: unknown) => reason,
+        );
+
+      expect(error).toBeInstanceOf(ImageDecodingError);
+      expect((error as ImageDecodingError).reason).toBe(
+        'unsupported_image_variant',
+      );
+      expect((error as ImageDecodingError).format).toBe('bmp');
+    },
+  );
 
   it('rechaza imágenes malformadas como error de decodificación', async () => {
     const malformed = Buffer.concat([

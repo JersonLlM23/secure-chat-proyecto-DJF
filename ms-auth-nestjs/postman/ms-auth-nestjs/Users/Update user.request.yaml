@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/users/{{userId}}"
+method: PATCH
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{accessToken}}
+body:
+  type: text
+  content: |-
+    {
+      "nombres": "Usuario Editado"
+    }
+order: 5000

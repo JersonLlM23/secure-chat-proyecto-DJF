@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/auth/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "identifier": "jperez",
+      "password": "ClaveSegura2026!"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('login ok', () => pm.response.to.have.status(200));
+      const body = pm.response.json();
+      pm.collectionVariables.set('accessToken', body.accessToken);
+      if (body.user) { pm.collectionVariables.set('userId', body.user.id); }
+    language: text/javascript
+order: 1000

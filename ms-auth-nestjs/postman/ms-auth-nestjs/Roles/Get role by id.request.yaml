@@ -1,0 +1,6 @@
+$kind: http-request
+url: "{{baseUrl}}/roles/{{roleId}}"
+method: GET
+headers:
+  Authorization: Bearer {{accessToken}}
+order: 3000

@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/user-roles"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{accessToken}}
+body:
+  type: text
+  content: |-
+    {
+      "userId": "{{userId}}",
+      "roleId": "{{roleId}}",
+      "estado": true
+    }
+scripts:
+  - type: afterResponse
+    code: if (pm.response.code === 201) { pm.collectionVariables.set('assignmentId', pm.response.json().id); }
+    language: text/javascript
+order: 1000

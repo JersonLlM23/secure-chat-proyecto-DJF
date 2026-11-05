@@ -157,6 +157,33 @@ describe('StegoService', () => {
     );
   });
 
+  it('distingue una variante no soportada de un error genérico de decodificación', async () => {
+    const { service, steganography, analyses } = createContext();
+
+    steganography.analyze.mockRejectedValue(
+      new ImageDecodingError('unsupported_image_variant', {
+        format: 'bmp',
+        detail: 'compresión BMP 1',
+      }),
+    );
+
+    await expect(service.analyze(user, file)).rejects.toThrow(
+      UnprocessableEntityException,
+    );
+
+    expect(analyses.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: StegoStatus.ERROR,
+        action: StegoAction.RECHAZO,
+        indicators: {
+          stage: 'decoding',
+          reason: 'unsupported_image_variant',
+          format: 'bmp',
+        },
+      }),
+    );
+  });
+
   it('consulta read.own para el propietario del resultado', async () => {
     const { service, authClient, analyses } = createContext();
 

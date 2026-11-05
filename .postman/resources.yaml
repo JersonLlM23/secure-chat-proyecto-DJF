@@ -1,0 +1,9 @@
+# Use this workspace to collaborate
+workspace:
+  id: 0803ac95-d878-4569-bc44-bee463474875
+
+localResources:
+  collections:
+    - ../ms-auth-nestjs/postman/ms-auth-nestjs
+  environments:
+    - ../ms-auth-nestjs/postman/ms-auth-nestjs local.environment.yaml

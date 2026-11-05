@@ -1,0 +1,26 @@
+$kind: http-request
+url: "{{baseUrl}}/users"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{accessToken}}
+body:
+  type: text
+  content: |-
+    {
+      "cedula": "1799999999",
+      "nombres": "Usuario",
+      "apellidos": "Postman",
+      "fechaNacimiento": "1995-01-01",
+      "username": "postman_user",
+      "email": "postman_user@example.com",
+      "telefono": "0999999999",
+      "password": "ClaveSegura2026!"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('creado', () => pm.expect([200,201]).to.include(pm.response.code));
+      if (pm.response.code === 201) { pm.collectionVariables.set('userId', pm.response.json().id); }
+    language: text/javascript
+order: 1000

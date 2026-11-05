@@ -1,0 +1,11 @@
+$kind: collection
+description: Colección funcional del microservicio AUTH (RS256 + RBAC dinámico). Ejecutar Login primero para poblar accessToken.
+variables:
+  baseUrl: http://localhost:3001/api
+  internalBaseUrl: http://localhost:3001
+  accessToken: ""
+  internalApiKey: REPLACE_WITH_INTERNAL_API_KEY
+  userId: ""
+  roleId: ""
+  roleAnalystId: ""
+  assignmentId: ""

@@ -1,0 +1,9 @@
+$kind: http-request
+url: "{{baseUrl}}/roles?page=1&limit=20"
+method: GET
+headers:
+  Authorization: Bearer {{accessToken}}
+queryParams:
+  page: "1"
+  limit: "20"
+order: 2000

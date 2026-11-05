@@ -1,0 +1,6 @@
+$kind: http-request
+url: "{{baseUrl}}/users/cedula/1799999999"
+method: GET
+headers:
+  Authorization: Bearer {{accessToken}}
+order: 4000

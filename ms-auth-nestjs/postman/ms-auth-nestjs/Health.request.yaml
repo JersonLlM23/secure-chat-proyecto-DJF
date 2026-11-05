@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{baseUrl}}/health"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('status ok', () => pm.response.to.have.status(200));
+      pm.test('servicio auth', () => pm.expect(pm.response.json().service).to.eql('ms-auth-nestjs'));
+    language: text/javascript
+order: 1000

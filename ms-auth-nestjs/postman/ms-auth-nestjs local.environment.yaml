@@ -1,0 +1,18 @@
+name: ms-auth-nestjs local
+values:
+  - key: baseUrl
+    value: 'http://localhost:3001/api'
+  - key: internalBaseUrl
+    value: 'http://localhost:3001'
+  - key: accessToken
+    value: ''
+  - key: internalApiKey
+    value: REPLACE_WITH_INTERNAL_API_KEY
+  - key: userId
+    value: ''
+  - key: roleId
+    value: ''
+  - key: roleAnalystId
+    value: ''
+  - key: assignmentId
+    value: ''

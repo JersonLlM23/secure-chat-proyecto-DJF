@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/roles"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{accessToken}}
+body:
+  type: text
+  content: |-
+    {
+      "rol": "AUDITOR"
+    }
+scripts:
+  - type: afterResponse
+    code: if (pm.response.code === 201) { pm.collectionVariables.set('roleId', pm.response.json().id); }
+    language: text/javascript
+order: 1000
