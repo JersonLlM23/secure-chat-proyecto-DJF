@@ -92,6 +92,9 @@ No se necesita Node.js ni npm para ejecutar los contenedores.
 En Windows, si `openssl` no esta disponible en PowerShell, puede usarse
 Git Bash o WSL para ejecutar los comandos de generacion de claves.
 
+En Linux o macOS, los comandos de generacion de claves del paso 5 funcionan
+directamente en la terminal (bash o zsh).
+
 ### 2.2 Para desarrollar o modificar el proyecto
 
 Ademas de lo anterior:
@@ -141,11 +144,13 @@ versionados: se generan en el paso 5.
 El archivo `.env` de la raiz no esta versionado (esta en `.gitignore`). Debe
 crearse a partir de `.env.example`:
 
+En Linux o macOS (bash/zsh):
+
 ```bash
 cp .env.example .env
 ```
 
-En PowerShell:
+En Windows (PowerShell):
 
 ```powershell
 Copy-Item .env.example .env
@@ -229,7 +234,7 @@ ms-auth-nestjs/keys/private.pem
 ms-auth-nestjs/keys/public.pem
 ```
 
-Generacion desde la raiz del repositorio:
+Generacion desde la raiz del repositorio. En Linux o macOS (bash/zsh):
 
 ```bash
 mkdir -p ms-auth-nestjs/keys
@@ -237,11 +242,15 @@ openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out ms-auth-nestjs
 openssl rsa -pubout -in ms-auth-nestjs/keys/private.pem -out ms-auth-nestjs/keys/public.pem
 ```
 
-En PowerShell, para crear la carpeta:
+En Windows (PowerShell), para crear la carpeta:
 
 ```powershell
 New-Item -ItemType Directory -Force -Path ms-auth-nestjs\keys
 ```
+
+Despues de crear la carpeta, ejecuta los mismos comandos `openssl` mostrados
+arriba desde PowerShell, Git Bash o WSL para generar `private.pem` y
+`public.pem`.
 
 Consideraciones:
 
@@ -1109,7 +1118,23 @@ docker compose logs stego-migrate
 docker compose ps
 ```
 
-En Windows, para identificar un proceso que ocupa un puerto:
+Para identificar un proceso que ocupa un puerto.
+
+En Linux:
+
+```bash
+ss -ltnp | grep ':3001'
+ss -ltnp | grep ':3002'
+```
+
+En macOS:
+
+```bash
+lsof -nP -iTCP:3001 -sTCP:LISTEN
+lsof -nP -iTCP:3002 -sTCP:LISTEN
+```
+
+En Windows (PowerShell):
 
 ```powershell
 netstat -ano | findstr :3001
