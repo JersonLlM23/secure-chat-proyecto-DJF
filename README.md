@@ -1,8 +1,9 @@
 # Secure Chat - Backend V1
 
-**Materia:** Desarrollo Software Seguro - ESPE  
+**Materia:** Desarrollo Software Seguro 
 **Proyecto:** Secure Chat - Backend V1  
-**Arquitectura:** Microservicios AUTH + STEGO orquestados con Docker Compose
+**Arquitectura:** Microservicios AUTH + STEGO orquestados con Docker Compose  
+**Integrantes:** Chalacan Dennison, Llumiquinga M. Jerson, Sandoval Fernando
 
 ---
 
