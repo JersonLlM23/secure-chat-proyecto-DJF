@@ -12,10 +12,6 @@ Manual de Usuario / Guia de Ejecucion y Pruebas del Backend.
 
 **Ultima actualizacion:** 2026-11-05
 
-> Este documento se basa unicamente en el estado actual del repositorio. Si
-> alguna documentacion antigua contradice el codigo actual, prevalece el
-> codigo.
-
 ---
 
 ## 1. Introduccion
